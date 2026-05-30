@@ -1489,6 +1489,18 @@ function _onPinchEnd(e) {
   if (!pdfDoc) { _clearPinchTransform(content); return; }
 
   const actualRatio = newScale / _pinch.startScale;
+
+  // ── Immediate visual lock-in (synchronous) ──────────────────────────────────
+  // Stretch existing canvases to the new display size RIGHT NOW so zoom persists
+  // regardless of async re-render outcome (race conditions, errors, etc.)
+  document.querySelectorAll('#pdf-content canvas').forEach(c => {
+    const w = parseFloat(c.style.width);
+    if (w) c.style.width = (w * actualRatio) + 'px';
+    const h = parseFloat(c.style.height);
+    if (h) c.style.height = (h * actualRatio) + 'px';
+    c.style.maxWidth = pdfWidth + '%';
+  });
+
   // focal point ในพิกัด content ใหม่ (= พิกัดเดิม × ratio) — ใช้ยึด scroll หลัง render
   const focal = {
     contentX: _pinch.originX * actualRatio,
@@ -1499,8 +1511,7 @@ function _onPinchEnd(e) {
 
   area.style.overflowX = (pdfWidth > 100 && !horizMode) ? 'auto' : '';
 
-  // ไม่เคลียร์ transform ตรงนี้ — ปล่อย preview ค้างไว้ ให้ _rerenderAtNewScale
-  // สลับเป็นภาพคมทีเดียวหลัง render เสร็จ (กัน snap-back + กระพริบ)
+  // ปล่อย preview transform ค้างไว้ ให้ _rerenderAtNewScale สลับเป็นภาพคมทีเดียว
   clearTimeout(_pinchRerenderTimer);
   _rerenderAtNewScale(actualRatio, focal);
 }
