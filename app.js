@@ -1302,44 +1302,37 @@ function scheduleAutoHide() {
 // ── Re-render visible pages at new scale ──────────────────────────────────────
 // คงภาพ preview (CSS transform) ไว้ระหว่าง render หน้าใหม่ทั้งหมด แล้วค่อยสลับ
 // เป็นภาพคม + จัด scroll ทีเดียว → ไม่ snap, ไม่กระพริบ, ไม่เลื่อนหน้า
-async function _rerenderAtNewScale(scaleRatio, focal) {
+async function _rerenderAtNewScale(scaleRatio, focal, snapTop, snapLeft) {
   const area    = document.getElementById('pdf-area');
   const content = document.getElementById('pdf-content');
   if (!pdfDoc || !area) return;
 
-  // กัน onscroll เปลี่ยนหน้า + ปิด native scroll-anchor ที่ตีกับการ set scrollTop ของเรา
+  // snapshot scroll ณ ตอนเริ่ม (ถ้าไม่ได้ส่งมา ใช้ค่าปัจจุบัน)
+  const scrollTopSnapshot  = (snapTop  !== undefined) ? snapTop  : area.scrollTop;
+  const scrollLeftSnapshot = (snapLeft !== undefined) ? snapLeft : area.scrollLeft;
+
   _restoring = true;
   const prevOverflowAnchor = area.style.overflowAnchor;
   area.style.overflowAnchor = 'none';
 
-  // Freeze ความสูงของหน้าที่ render อยู่ ระหว่างวาดใหม่ → layout นิ่ง
-  // ไม่ใช้ overflow:hidden เพราะทำให้ canvas หายชั่วคราว → observer คิดว่าหน้าออกจาก viewport → re-trigger วนไม่หยุด
+  // Freeze ความสูงระหว่างวาดใหม่
   const rendered = _pageWrappers.filter(w => w._rendered);
-  rendered.forEach(w => {
-    w.style.height = w.offsetHeight + 'px';
-  });
+  rendered.forEach(w => { w.style.height = w.offsetHeight + 'px'; });
 
-  // บันทึก scrollTop/Left ก่อน await — หลัง await browser อาจเปลี่ยนค่าได้ (iOS inertia)
-  const scrollTopSnapshot  = area.scrollTop;
-  const scrollLeftSnapshot = area.scrollLeft;
-
-  // วาดหน้าใหม่ทั้งหมด "นอก" DOM ก่อน (staged) แล้วรอจนเสร็จครบ → ไม่มีหน้าไหนโดน transform ซ้ำ
+  // Render ทุกหน้า off-DOM (staged)
   const jobs = [];
   rendered.forEach(w => {
     w._rendered = false;
     w._origData = null;
     w._pendingCanvas = null;
-    jobs.push(renderPageInto(parseInt(w.dataset.page), w, true)); // staged=true
+    jobs.push(renderPageInto(parseInt(w.dataset.page), w, true));
   });
   await Promise.all(jobs);
 
-  // ── ทุกอย่างพร้อมแล้ว → สลับ canvas + ถอด transform + จัด scroll ในเฟรมเดียว (atomic) ──
-  // 1) อัปเดตความสูงประมาณของหน้าที่ยังไม่ render
+  // ── Atomic: swap canvas + ถอด transform + จัด scroll ──
   _estPageH = _baseScale > 0 ? Math.round(_basePageH * pdfScale / _baseScale) : Math.round(_estPageH * scaleRatio);
   _pageWrappers.forEach(w => { if (!w._rendered) w.style.minHeight = _estPageH + 'px'; });
-  // 2) ปลด freeze ความสูง → หน้าโชว์ขนาดใหม่จริง
   rendered.forEach(w => { w.style.height = ''; });
-  // 3) swap canvas ทุกหน้า + ถอด preview transform พร้อมกันในบล็อกเดียว → browser paint ครั้งเดียว ไม่กระพริบ
   rendered.forEach(w => {
     const pending = w._pendingCanvas;
     if (pending) {
@@ -1349,30 +1342,28 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
       w._pendingCanvas = null;
     }
   });
+  // ถอด transform → canvas ใหม่ขนาดถูกต้องพอดี ไม่มี pop
   if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
-  // อัปเดต background จากหน้า 1
+
+  // อัปเดต background หน้า 1
   const _p1w = _pageWrappers.find(w => parseInt(w.dataset.page) === 1);
   if (_p1w && _p1w._origData) {
     const px = _p1w._origData.data;
     const aEl = document.getElementById('pdf-area');
     if (aEl) aEl.style.background = `rgb(${px[0]},${px[1]},${px[2]})`;
   }
-  // 4) ยึด scroll: คำนวณจากพิกัดคณิตล้วนๆ (ไม่พึ่ง getBoundingClientRect)
-  //    originY = viewportY + scrollTop_old → focal point ในย่าน content ใหม่ = originY × ratio
-  //    ต้องการให้ focal อยู่ที่ viewportY → newScrollTop = originY × ratio - viewportY
-  //    ใช้ snapshot ก่อน await (ไม่ใช่ค่าปัจจุบันที่อาจถูก iOS inertia เปลี่ยน)
+
+  // จัด scroll ให้ตรงกับ focal point (ใช้ snapshot ก่อน await)
   if (focal) {
-    // recalculate จาก snapshot เพื่อความแม่นยำสูงสุด
-    const snapContentY = (focal.viewY + scrollTopSnapshot)  * scaleRatio;
-    const snapContentX = (focal.viewX + scrollLeftSnapshot) * scaleRatio;
+    const newScrollY = (focal.viewY + scrollTopSnapshot)  * scaleRatio - focal.viewY;
+    const newScrollX = (focal.viewX + scrollLeftSnapshot) * scaleRatio - focal.viewX;
     if (horizMode) {
-      area.scrollLeft = Math.max(0, snapContentX - focal.viewX);
+      area.scrollLeft = Math.max(0, newScrollX);
     } else {
-      area.scrollTop  = Math.max(0, snapContentY - focal.viewY);
+      area.scrollTop  = Math.max(0, newScrollY);
     }
   }
 
-  // คืน state — หน่วงเล็กน้อยให้ layout settle ก่อนเปิด onscroll page-tracking อีกครั้ง
   area.style.overflowAnchor = prevOverflowAnchor;
   setTimeout(() => { _restoring = false; }, 120);
 }
@@ -1524,9 +1515,20 @@ function _onPinchEnd(e) {
 
   area.style.overflowX = (pdfWidth > 100 && !horizMode) ? 'auto' : '';
 
-  // คง transform ไว้ระหว่าง render — _rerenderAtNewScale จะสลับเป็นภาพคมแล้วลบ transform ทีเดียว
+  // 1) จัด scroll ทันทีโดยไม่ต้องรอ render → ผู้ใช้เห็นผลทันที transform ยังค้างอยู่
+  if (area) {
+    if (horizMode) {
+      area.scrollLeft = Math.max(0, focal.contentX - focal.viewX);
+    } else {
+      area.scrollTop  = Math.max(0, focal.contentY - focal.viewY);
+    }
+  }
+
+  // 2) Re-render แบบ background หลังหยุดซูม 300ms — พอเสร็จค่อย swap+clear transform (ไม่มีใครเห็น)
   clearTimeout(_pinchRerenderTimer);
-  _rerenderAtNewScale(actualRatio, focal);
+  _pinchRerenderTimer = setTimeout(() => {
+    _rerenderAtNewScale(actualRatio, focal, area.scrollTop, area.scrollLeft);
+  }, 300);
 }
 
 function _blockGesture(e) { e.preventDefault(); }
@@ -2011,6 +2013,7 @@ function dismissInstallBanner() {
   document.getElementById('install-banner').classList.remove('show');
   localStorage.setItem('nn_install_dismissed', '1');
 }
+
 
 // ── Init ───────────────────────────────────────────
 updateStreakUI();
