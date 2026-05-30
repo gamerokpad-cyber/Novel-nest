@@ -1491,24 +1491,6 @@ function _onPinchEnd(e) {
 
   const actualRatio = newScale / _pinch.startScale;
 
-  // ── Immediate visual lock-in (synchronous, no double-zoom) ──────────────────
-  // 1) Capture each canvas's RENDERED size (includes CSS transform) BEFORE
-  //    clearing the transform — these are the correct zoomed pixel values.
-  const canvasSnap = [];
-  document.querySelectorAll('#pdf-content canvas').forEach(c => {
-    const r = c.getBoundingClientRect();
-    canvasSnap.push({ c, w: r.width, h: r.height });
-  });
-  // 2) Clear the transform NOW so there is no double-scaling.
-  _clearPinchTransform(content);
-  // 3) Stamp the zoomed dimensions directly onto each canvas — zoom is now
-  //    baked in without any CSS transform, so it can't snap back.
-  canvasSnap.forEach(({ c, w, h }) => {
-    c.style.width    = w + 'px';
-    c.style.height   = h + 'px';
-    c.style.maxWidth = pdfWidth + '%';
-  });
-
   // focal point ในพิกัด content ใหม่ (= พิกัดเดิม × ratio) — ใช้ยึด scroll หลัง render
   const focal = {
     contentX: _pinch.originX * actualRatio,
@@ -1519,7 +1501,7 @@ function _onPinchEnd(e) {
 
   area.style.overflowX = (pdfWidth > 100 && !horizMode) ? 'auto' : '';
 
-  // Async re-render replaces blurry stretched canvases with sharp ones
+  // คง transform ไว้ระหว่าง render — _rerenderAtNewScale จะสลับเป็นภาพคมแล้วลบ transform ทีเดียว
   clearTimeout(_pinchRerenderTimer);
   _rerenderAtNewScale(actualRatio, focal);
 }
