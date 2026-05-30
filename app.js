@@ -1104,12 +1104,6 @@ function importBackup() {
   inp.click();
 }
 
-async function getProgress(novelId) {
-  try {
-    const rows = await dbGet('reading_progress', `select=*&novel_id=eq.${novelId}&device_id=eq.${deviceId}&limit=1`);
-    return rows?.[0] || null;
-  } catch { return null; }
-}
 async function saveProgress(novelId, page, total, keepalive = false) {
   try {
     const h = { ...H, 'Prefer': 'resolution=merge-duplicates' };
@@ -1387,7 +1381,6 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
 // CSS transform on #pdf-content during gesture (smooth, centered on fingers),
 // then re-renders at updated pdfScale + pdfWidth on release.
 let _pinch = { active: false, startDist: 0, startScale: 1, startWidth: 88, startCanvasW: 0, originX: 0, originY: 0, viewportX: 0, viewportY: 0, anchorPage: 1, anchorFrac: 0, curRatio: 1 };
-let _pinchRerenderTimer = null;
 let _pinchRAF = 0;
 
 function _pinchDist(touches) {
@@ -1557,8 +1550,6 @@ function toggleSizeLock() {
   showToast(sizeLocked ? '🔒 ล็อคซูมแล้ว' : '🔓 ปลดล็อคซูมแล้ว');
 }
 
-function stopVpLock() { /* no-op */ }
-
 function applySizeLockUI() {
   const toggle = document.getElementById('lock-toggle');
   if (toggle) toggle.checked = sizeLocked;
@@ -1576,8 +1567,6 @@ function applySizeLockUI() {
   const area = document.getElementById('pdf-area');
   if (area) area.classList.toggle('zoom-locked', sizeLocked);
 }
-function showLockBtn(_v) { /* no-op (legacy) */ }
-
 // ── Drawer tabs ─────────────────────────────────
 function setDrawerTab(tab) {
   activeDrawerTab = tab;

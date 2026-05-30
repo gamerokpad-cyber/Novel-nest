@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('C:/test ระบบ/novel/app.js','utf8'\\)\")",
+      "PowerShell(node -e \"try { require\\('fs'\\).readFileSync\\('C:/test ????/novel/app.js','utf8'\\); console.log\\('OK'\\) } catch\\(e\\){ console.log\\(e.message\\) }\")",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\putti\\\\AppData\\\\Local\\\\Programs\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \"C:\\\\Program Files\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"node|python|php|ruby\" } | Select-Object Name)",
+      "PowerShell(Get-Command php, ruby, deno, bun, caddy, nginx -ErrorAction SilentlyContinue | Select-Object Name, Source; [System.Net.HttpListener]::IsSupported)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node --check app.js)",
+      "Bash(npx playwright *)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "PowerShell(\"killed\")",
+      "PowerShell(cd \"C:\\\\test ระบบ\\\\novel\"; Start-Process powershell -ArgumentList '-NoProfile','-File','serve.ps1' -WindowStyle Hidden; Start-Sleep 2; try { \\(Invoke-WebRequest http://localhost:7788/ -UseBasicParsing -TimeoutSec 5\\).StatusCode } catch { \"ERR: $_\" })",
+      "PowerShell(cd \"C:\\\\test ระบบ\\\\novel\"; $env:NOVEL_URL=\"http://localhost:7788\"; npx playwright test tests/zoom.spec.js --project=\"iPhone 14\" --reporter=line 2>&1 | Select-Object -Last 30)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Get-Process powershell -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Where-Object { $_.StartTime -gt \\(Get-Date\\).AddMinutes\\(-15\\) } | Stop-Process -Force -ErrorAction SilentlyContinue; \"cleaned up\")",
+      "PowerShell(\"winget: $\\(\\(winget --version 2>&1\\)\\)\")",
+      "PowerShell($gh = \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\"; if \\(Test-Path $gh\\) { \"found: $gh\"; & $gh --version | Select-Object -First 1 } else { \"not at default path\"; Get-Command gh -ErrorAction SilentlyContinue })"
+    ]
+  }
+}
