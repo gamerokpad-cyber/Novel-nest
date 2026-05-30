@@ -1358,21 +1358,16 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
     const aEl = document.getElementById('pdf-area');
     if (aEl) aEl.style.background = `rgb(${px[0]},${px[1]},${px[2]})`;
   }
-  // 4) ยึด scroll ด้วย "หน้าจริง" ที่อยู่ใต้นิ้ว — วัดตำแหน่งจริงหลัง render เสร็จ
-  //    (ภูมิคุ้มกันค่าความสูงประมาณของหน้าที่ยังไม่ render → ไม่ขยับ/ไม่เด้ง)
-  const aw = _pageWrappers.find(w => parseInt(w.dataset.page) === _pinch.anchorPage);
-  if (aw) {
-    const aRect = area.getBoundingClientRect();
-    const wRect = aw.getBoundingClientRect();
+  // 4) ยึด scroll: คำนวณจากพิกัดคณิตล้วนๆ (ไม่พึ่ง getBoundingClientRect)
+  //    originY = viewportY + scrollTop_old → focal point ในย่าน content ใหม่ = originY × ratio
+  //    ต้องการให้ focal อยู่ที่ viewportY → newScrollTop = originY × ratio - viewportY
+  //    ตรงกับสิ่งที่ CSS transform preview แสดงพอดี → ไม่มีขยับ
+  if (focal) {
     if (horizMode) {
-      const focalOnScreen = (wRect.left - aRect.left) + _pinch.anchorFrac * wRect.width;
-      area.scrollLeft += (focalOnScreen - _pinch.viewportX);
+      area.scrollLeft = Math.max(0, focal.contentX - focal.viewX);
     } else {
-      const focalOnScreen = (wRect.top - aRect.top) + _pinch.anchorFrac * wRect.height;
-      area.scrollTop += (focalOnScreen - _pinch.viewportY);
+      area.scrollTop  = Math.max(0, focal.contentY - focal.viewY);
     }
-  } else if (focal) {
-    area.scrollTop = Math.max(0, focal.contentY - focal.viewY);
   }
 
   // คืน state — หน่วงเล็กน้อยให้ layout settle ก่อนเปิด onscroll page-tracking อีกครั้ง
