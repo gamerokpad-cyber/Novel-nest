@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NovelNest 🍭</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&family=Bai+Jamjuree:wght@500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff4d8d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NovelNest">
+<meta name="description" content="คลังนิยาย PDF ส่วนตัวของคุณ">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ========== LIBRARY ========== -->
+<div id="library-page">
+
+  <!-- decorative confetti -->
+  <div class="lib-confetti">
+    <span class="c1">✨</span>
+    <span class="c2">💫</span>
+    <span class="c3">⭐</span>
+    <span class="c4">✨</span>
+    <span class="c5">💫</span>
+  </div>
+
+  <!-- HEADER -->
+  <header class="lib-header">
+    <div class="logo-sticker">📚</div>
+    <div class="lib-greeting">
+      <div class="lib-brand">NovelNest</div>
+      <div class="lib-hello" id="lib-hello">สวัสดี, นักอ่าน! 👋</div>
+    </div>
+    <div class="streak-chip" onclick="showStreakInfo()">
+      <span class="flame">🔥</span>
+      <strong id="streak-count">0</strong>
+      <small>วัน</small>
+    </div>
+    <button class="btn-circle" onclick="openSettings()" title="ตั้งค่า">⚙️</button>
+  </header>
+
+  <!-- SEARCH -->
+  <div class="search-bar">
+    <span class="icon">🔍</span>
+    <input id="search-input" type="text" placeholder="ค้นหานิยายที่อยากอ่าน..." oninput="onSearchChange()">
+    <button class="btn-plus" onclick="openUpload()" title="อัปโหลด">＋</button>
+  </div>
+
+  <!-- CONTINUE READING -->
+  <div id="continue-wrap" style="display:none">
+    <div class="section-head">
+      <div class="section-title">📖 อ่านต่อจากเมื่อกี้</div>
+      <div class="section-meta" id="continue-meta"></div>
+    </div>
+    <div class="continue-section">
+      <div class="continue-card" id="continue-card" onclick="openContinueReader()">
+        <div class="continue-cover" id="continue-cover">
+          <span class="ph-emoji">📖</span>
+          <div class="pct-badge" id="continue-pct">0%</div>
+        </div>
+        <div class="continue-info">
+          <div class="continue-title" id="continue-title">—</div>
+          <div class="continue-meta" id="continue-progress">—</div>
+          <button class="btn-resume">เปิดอ่านต่อ →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card s-y">
+      <div class="stat-icon">📚</div>
+      <div class="stat-big" id="stat-pages">0</div>
+      <div class="stat-small">หน้าวันนี้</div>
+    </div>
+    <div class="stat-card s-m">
+      <div class="stat-icon">⏱️</div>
+      <div class="stat-big" id="stat-minutes">0น</div>
+      <div class="stat-small">นาทีวันนี้</div>
+    </div>
+    <div class="stat-card s-p">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-big" id="stat-done">0</div>
+      <div class="stat-small">จบเดือนนี้</div>
+    </div>
+  </div>
+
+  <!-- FOLDERS -->
+  <div class="folders-wrap">
+    <div class="section-head">
+      <div class="section-title">🗂️ โฟลเดอร์ของฉัน</div>
+    </div>
+    <div class="folders-scroll" id="folders-scroll">
+      <div class="folder-chip fld-1" data-filter="reading" onclick="setFolder('reading')">
+        <div class="folder-icon">📖</div>
+        <div><div class="folder-name">อ่านอยู่</div><div class="folder-count" id="fld-reading">0 เล่ม</div></div>
+      </div>
+      <div class="folder-chip fld-2" data-filter="towatch" onclick="setFolder('towatch')">
+        <div class="folder-icon">⭐</div>
+        <div><div class="folder-name">อยากอ่าน</div><div class="folder-count" id="fld-towatch">0 เล่ม</div></div>
+      </div>
+      <div class="folder-chip fld-3" data-filter="done" onclick="setFolder('done')">
+        <div class="folder-icon">✅</div>
+        <div><div class="folder-name">อ่านจบ</div><div class="folder-count" id="fld-done">0 เล่ม</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SORT/TAG PILLS -->
+  <div class="tags-scroll" id="sort-scroll">
+    <button class="tag-pill active" data-sort="all" onclick="setSort('all')">📚 ทั้งหมด</button>
+    <button class="tag-pill" data-sort="last_read" onclick="setSort('last_read')">⏰ อ่านล่าสุด</button>
+    <button class="tag-pill" data-sort="newest" onclick="setSort('newest')">✨ ใหม่สุด</button>
+    <button class="tag-pill" data-sort="az" onclick="setSort('az')">🔤 A–Z</button>
+  </div>
+
+  <!-- BOOKSHELF -->
+  <div class="shelf-wrap">
+    <div class="section-head" style="margin-left:0;margin-right:0;">
+      <div class="section-title">📚 ชั้นหนังสือของฉัน</div>
+      <div class="section-meta" id="shelf-count">0 เล่ม</div>
+    </div>
+    <div class="novel-grid" id="novel-grid">
+      <div class="state-box"><div class="spinner" style="margin:0 auto"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-tab active" onclick="scrollToTop()">
+    <div class="icon-box">📚</div>
+    <div class="lbl">คลัง</div>
+  </button>
+  <button class="nav-tab" onclick="showStreakInfo()">
+    <div class="icon-box">🔥</div>
+    <div class="lbl">สถิติ</div>
+  </button>
+  <button class="nav-tab" onclick="openUpload()">
+    <div class="icon-box">＋</div>
+    <div class="lbl">เพิ่ม</div>
+  </button>
+  <button class="nav-tab" onclick="openSettings()">
+    <div class="icon-box">⚙️</div>
+    <div class="lbl">ตั้งค่า</div>
+  </button>
+</nav>
+
+<!-- ========== READER ========== -->
+<div id="reader-page">
+  <div class="reader-bar" id="reader-bar">
+    <div class="reader-title-text" id="reader-title">กำลังโหลด...</div>
+    <button class="btn-lock-bar" id="btn-lock-bar" onclick="toggleSizeLock()" title="ล็อคซูม">🔓</button>
+  </div>
+
+  <div class="pdf-area" id="pdf-area" onclick="onReaderTap(event)">
+    <div class="page-placeholder"><div class="spinner"></div><span>กำลังโหลด...</span></div>
+  </div>
+  <div class="tap-hint" id="tap-hint">แตะเพื่อแสดงเมนู</div>
+  <div id="warm-overlay"></div>
+
+  <div class="reader-bottom" id="reader-bottom">
+    <div class="scrubber-wrap" id="scrubber-wrap">
+      <div class="scrubber-track" id="scrubber-track">
+        <div class="scrubber-fill" id="scrubber-fill"></div>
+        <div class="scrubber-thumb" id="scrubber-thumb"></div>
+      </div>
+      <div class="scrubber-tip" id="scrubber-tip">1</div>
+    </div>
+    <div class="reader-bottom-row">
+      <button class="btn-back" onclick="closeReader()" title="กลับ">←</button>
+      <div class="page-counter" id="page-counter" onclick="openPageJump()" title="แตะเพื่อกระโดดหน้า" style="cursor:pointer">0 / 0</div>
+      <div class="bottom-actions">
+        <button class="btn-settings-trigger" onclick="openSettings()">⚙️</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SETTINGS DRAWER ========== -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+<div class="settings-drawer" id="settings-drawer">
+  <div class="drawer-handle" id="drawer-handle"></div>
+
+  <!-- Tabs (only shown in reader) -->
+  <div class="drawer-tabs" id="drawer-tabs">
+    <button class="drawer-tab active" data-tab="read" onclick="setDrawerTab('read')">
+      <div class="ico">📖</div><div>อ่าน</div>
+    </button>
+    <button class="drawer-tab" data-tab="marks" onclick="setDrawerTab('marks')">
+      <div class="ico">🔖</div><div>มาร์ก</div>
+    </button>
+    <button class="drawer-tab" data-tab="stats" onclick="setDrawerTab('stats')">
+      <div class="ico">📊</div><div>สถิติ</div>
+    </button>
+  </div>
+
+  <!-- Tab: อ่าน -->
+  <div class="drawer-panel" id="panel-read">
+
+    <!-- ── Reading Presets ── -->
+    <div class="setting-label">โหมดการอ่าน</div>
+    <div class="preset-grid" id="preset-grid">
+      <div class="preset-card" data-preset="day" onclick="applyPreset('day')">
+        <div class="preset-preview preset-day">A ก</div>
+        <div class="preset-name">🌤 กลางวัน</div>
+      </div>
+      <div class="preset-card" data-preset="cream" onclick="applyPreset('cream')">
+        <div class="preset-preview preset-cream">A ก</div>
+        <div class="preset-name">📖 ครีม</div>
+      </div>
+      <div class="preset-card" data-preset="dusk" onclick="applyPreset('dusk')">
+        <div class="preset-preview preset-dusk">A ก</div>
+        <div class="preset-name">🌆 พลบค่ำ</div>
+      </div>
+      <div class="preset-card" data-preset="night" onclick="applyPreset('night')">
+        <div class="preset-preview preset-night">A ก</div>
+        <div class="preset-name">🌙 กลางคืน</div>
+      </div>
+    </div>
+
+    <!-- ── ขนาดหน้า ── -->
+    <div class="tk-row">
+      <div class="setting-label" style="margin:0">ขนาดหน้า</div>
+      <span class="tk-val" id="scale-display">100%</span>
+    </div>
+    <div class="tk-slider-row">
+      <span class="tk-mini" aria-hidden="true">A</span>
+      <input type="range" class="tk-slider" id="scale-slider" min="50" max="300" step="10" oninput="onScaleSliderChange(this.value)" onchange="onScaleSliderCommit()">
+      <span class="tk-mini" style="font-size:1.4em" aria-hidden="true">A</span>
+    </div>
+
+    <div class="tk-row" style="margin-top:14px">
+      <div class="setting-label" style="margin:0">ความกว้าง</div>
+      <span class="tk-val" id="width-display">88%</span>
+    </div>
+    <div class="tk-slider-row">
+      <span class="tk-mini" aria-hidden="true">┃</span>
+      <input type="range" class="tk-slider" id="width-slider" min="30" max="100" step="5" oninput="onWidthSliderChange(this.value)">
+      <span class="tk-mini" aria-hidden="true">━</span>
+    </div>
+
+    <button class="btn-fit-screen" onclick="fitToScreen()" title="ปรับให้พอดีหน้าจออัตโนมัติ">
+      📐 พอดีหน้าจอ
+    </button>
+    <div class="lock-note" id="lock-note">🔒 ล็อคซูมอยู่ — ปลดล็อคก่อนปรับขนาด</div>
+
+    <!-- ── ไฟอุ่น ── -->
+    <div class="tk-row" style="margin-top:18px">
+      <div class="setting-label" style="margin:0">🌡 ไฟอุ่น <small style="color:var(--cp-ink-soft);font-weight:600">ลดแสงสีฟ้า</small></div>
+      <span class="tk-val" id="warm-display">0%</span>
+    </div>
+    <div class="tk-slider-row">
+      <span class="tk-mini">❄️</span>
+      <input type="range" class="tk-slider" id="warm-slider" min="0" max="100" step="5" oninput="setWarmTint(this.value)">
+      <span class="tk-mini">🔥</span>
+    </div>
+
+    <!-- ── ตัด margin ── -->
+    <div class="toggle-row" style="margin-top:14px">
+      <span class="toggle-label">✂️ ตัด margin ขาว
+        <small style="color:var(--cp-ink-soft);font-weight:600">ตัวหนังสือใหญ่ขึ้น เต็มจอ</small>
+      </span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="autocrop-toggle" onchange="toggleAutoCrop()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- ── Toggles ── -->
+    <div class="toggle-row" style="margin-top:18px">
+      <span class="toggle-label">↔️ เลื่อนแนวนอน</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="horiz-toggle" onchange="toggleHoriz()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row" style="margin-top:12px">
+      <span class="toggle-label">🔒 ล็อคซูม <small style="color:var(--cp-ink-soft);font-weight:600">กันขยายโดยไม่ตั้งใจ</small></span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="lock-toggle" onchange="toggleSizeLock()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row" id="wake-row" style="margin-top:12px;display:none">
+      <span class="toggle-label">💡 จอไม่ดับ <small style="color:var(--cp-ink-soft);font-weight:600">ขณะอ่าน</small></span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="wake-toggle" onchange="toggleWakeLock()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- ── ปรับละเอียด (accordion) ── -->
+    <button class="btn-advanced-toggle" onclick="toggleAdvanced()">
+      ⚙️ ปรับละเอียด <span class="adv-arrow" id="adv-arrow">▾</span>
+    </button>
+    <div id="advanced-panel" style="display:none">
+      <div class="setting-label" style="margin-top:14px">สีพื้นกระดาษ</div>
+      <div class="quick-pc">
+        <div class="quick-pc-pill" data-pc="cream" onclick="setPageColor('cream')">
+          <div class="swatch-big" style="background:#f0e6d3"></div>ครีม
+        </div>
+        <div class="quick-pc-pill" data-pc="white" onclick="setPageColor('white')">
+          <div class="swatch-big" style="background:#fff;border-color:#bbb"></div>ขาว
+        </div>
+        <div class="quick-pc-pill" data-pc="night" onclick="setPageColor('night')">
+          <div class="swatch-big" style="background:#1a1a1a"></div>กลางคืน
+        </div>
+      </div>
+
+      <div class="setting-section-head">✨ ตัวอักษร</div>
+
+      <div class="tk-row">
+        <div class="setting-label" style="margin:0">คอนทราสต์</div>
+        <span class="tk-val" id="contrast-display">100%</span>
+      </div>
+      <div class="tk-slider-row">
+        <span class="tk-mini" aria-hidden="true">◌</span>
+        <input type="range" class="tk-slider" id="contrast-slider" min="50" max="200" step="5" oninput="onContrastChange(this.value)">
+        <span class="tk-mini" aria-hidden="true">●</span>
+      </div>
+
+      <div class="tk-row" style="margin-top:12px">
+        <div class="setting-label" style="margin:0">ความสว่าง</div>
+        <span class="tk-val" id="bright-display">100%</span>
+      </div>
+      <div class="tk-slider-row">
+        <span class="tk-mini" aria-hidden="true">🌑</span>
+        <input type="range" class="tk-slider" id="bright-slider" min="50" max="150" step="5" oninput="onBrightChange(this.value)">
+        <span class="tk-mini" aria-hidden="true">☀</span>
+      </div>
+
+      <div class="toggle-row" style="margin-top:12px">
+        <span class="toggle-label">✨ เพิ่มความคม <small style="color:var(--cp-ink-soft);font-weight:600">ตัวอักษรคมขึ้น</small></span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="sharp-toggle" onchange="toggleSharpness()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <button class="btn-reset-text" onclick="resetTextSettings()">🔄 รีเซ็ตค่าตัวอักษร</button>
+    </div>
+
+  </div>
+
+  <!-- Tab: มาร์ก -->
+  <div class="drawer-panel" id="panel-marks" style="display:none">
+    <button class="btn-bm-add" onclick="addBookmark()">
+      🔖 บุ๊กมาร์กหน้านี้ (หน้า <span id="bm-cur-page">-</span>)
+    </button>
+    <div class="bookmark-list" id="bookmark-list" style="margin-top:14px"></div>
+  </div>
+
+  <!-- Tab: สถิติ (also shown by default in library) -->
+  <div class="drawer-panel" id="panel-stats">
+    <div style="text-align:center;padding:6px 0 14px">
+      <div style="font-size:3rem;line-height:1">🔥</div>
+      <div style="font-size:2.5rem;font-weight:800;color:var(--cp-pink);line-height:1;margin-top:4px"><span id="about-streak">0</span></div>
+      <div style="font-size:.9rem;color:var(--cp-ink-soft);font-weight:600;margin-top:4px">วันติดต่อกัน</div>
+    </div>
+    <button class="btn-bm-add" onclick="closeSettings();showStreakInfo()">
+      📊 ดูสถิติทั้งหมด →
+    </button>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn-ghost" style="flex:1;font-size:.82rem" onclick="exportBackup()">💾 Export</button>
+      <button class="btn-ghost" style="flex:1;font-size:.82rem" onclick="importBackup()">📂 Import</button>
+    </div>
+    <div style="font-size:.8rem;color:var(--cp-ink-soft);text-align:center;margin-top:16px;line-height:1.5;font-weight:500">
+      📚 NovelNest — Your cozy library<br>
+      <small>เวอร์ชั่น Candy Pop 🍭</small>
+    </div>
+  </div>
+
+  <button class="btn-ghost" style="width:100%;margin-top:18px" onclick="closeSettings()">ปิด</button>
+</div>
+
+<!-- ========== UPLOAD MODAL ========== -->
+<div class="modal-backdrop" id="upload-modal">
+  <div class="modal-box">
+    <div class="modal-title">📖 อัปโหลดนิยาย</div>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="drop-icon">📄</div>
+      <div class="drop-text"><strong>คลิก</strong> หรือ ลากไฟล์มาวางที่นี่<br>รองรับ .pdf เท่านั้น</div>
+    </div>
+    <input type="file" id="file-input" accept=".pdf" style="display:none" onchange="handleFile(event)">
+    <div class="upload-prog" id="upload-prog">
+      <div class="prog-label" id="prog-label">กำลังอัปโหลด...</div>
+      <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeUpload()">ยกเลิก</button></div>
+  </div>
+</div>
+
+<!-- ========== CONFIRM DELETE ========== -->
+<div class="modal-backdrop" id="confirm-modal">
+  <div class="confirm-box">
+    <div class="confirm-title">🗑️ ลบนิยาย</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="btn-ghost" onclick="closeConfirm()">ยกเลิก</button>
+      <button class="btn-danger" id="confirm-ok">ลบเลย</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== RENAME MODAL ========== -->
+<div class="modal-backdrop" id="rename-modal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ แก้ชื่อนิยาย</div>
+    <input type="text" class="rename-input" id="rename-input" placeholder="ชื่อใหม่..." maxlength="120">
+    <div class="rename-actions">
+      <button class="btn-ghost" onclick="closeRename()">ยกเลิก</button>
+      <button class="btn-primary" onclick="doRename()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== STREAK INFO MODAL ========== -->
+<div class="modal-backdrop" id="streak-modal">
+  <div class="modal-box" style="box-shadow:8px 8px 0 var(--cp-yellow);">
+    <div class="modal-title">🔥 สถิติการอ่าน</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="stat-card s-y"><div class="stat-icon">🔥</div><div class="stat-big" id="sm-streak">0</div><div class="stat-small">วันติดต่อกัน</div></div>
+      <div class="stat-card s-m"><div class="stat-icon">🏆</div><div class="stat-big" id="sm-longest">0</div><div class="stat-small">streak สูงสุด</div></div>
+      <div class="stat-card s-p"><div class="stat-icon">📚</div><div class="stat-big" id="sm-pages-total">0</div><div class="stat-small">หน้าทั้งหมด</div></div>
+      <div class="stat-card s-y"><div class="stat-icon">⏱️</div><div class="stat-big" id="sm-min-total">0</div><div class="stat-small">นาทีทั้งหมด</div></div>
+    </div>
+    <!-- Weekly streak strip -->
+    <div style="font-size:.78rem;color:var(--cp-ink-soft);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:800">7 วันล่าสุด</div>
+    <div id="week-strip" style="display:flex;gap:6px;margin-bottom:18px;justify-content:space-between"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeStreakModal()">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- Install Banner -->
+<div class="install-banner" id="install-banner">
+  <div class="install-icon">📚</div>
+  <div class="install-text">
+    <strong>ติดตั้ง NovelNest</strong>
+    <span>เพิ่มลงหน้าจอหลักเพื่อใช้งานเหมือนแอป</span>
+  </div>
+  <button class="install-btn" onclick="promptInstall()">ติดตั้ง</button>
+  <button class="install-close" onclick="dismissInstallBanner()">✕</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

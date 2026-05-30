@@ -1,0 +1,9 @@
+node_modules/
+test-results/
+playwright-report/
+tests/
+playwright.config.js
+package.json
+package-lock.json
+serve.ps1
+.DS_Store
