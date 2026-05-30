@@ -955,7 +955,7 @@ async function renderAllPages(scrollTo = 1) {
   renderBookmarkList();
 }
 
-async function renderPageInto(pageNum, wrapper) {
+async function renderPageInto(pageNum, wrapper, staged = false) {
   // Capture generation so stale renders (started before a pinch-zoom) don't
   // overwrite the fresh canvas rendered at the new pdfScale.
   const myGen = (wrapper._renderGen = (wrapper._renderGen || 0) + 1);
@@ -1001,13 +1001,18 @@ async function renderPageInto(pageNum, wrapper) {
     wrapper._canvas   = canvas;
     // Apply enhancement on top
     applyEnhancementFromOrig(wrapper);
-    // append ก่อน ลบทีหลัง → ไม่มี blank frame ระหว่างสลับ
-    wrapper.appendChild(canvas);
-    while (wrapper.firstChild !== canvas) wrapper.removeChild(wrapper.firstChild);
-    wrapper._rendered = true; // mark done so IntersectionObserver won't re-trigger
-    if (pageNum === 1) {
-      const px = wrapper._origData.data;
-      document.getElementById('pdf-area').style.background = `rgb(${px[0]},${px[1]},${px[2]})`;
+    if (staged) {
+      // staged mode: เก็บ canvas ไว้ก่อน ยังไม่ใส่ DOM — _rerenderAtNewScale จะ swap ทีเดียวพร้อม clear transform
+      wrapper._pendingCanvas = canvas;
+    } else {
+      // append ก่อน ลบทีหลัง → ไม่มี blank frame ระหว่างสลับ
+      wrapper.appendChild(canvas);
+      while (wrapper.firstChild !== canvas) wrapper.removeChild(wrapper.firstChild);
+      wrapper._rendered = true; // mark done so IntersectionObserver won't re-trigger
+      if (pageNum === 1) {
+        const px = wrapper._origData.data;
+        document.getElementById('pdf-area').style.background = `rgb(${px[0]},${px[1]},${px[2]})`;
+      }
     }
   } catch { wrapper.innerHTML = `<div class="page-placeholder">⚠️ หน้า ${pageNum} โหลดไม่ได้</div>`; }
 }
@@ -1319,23 +1324,40 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
     w.style.height = w.offsetHeight + 'px';
   });
 
-  // วาดหน้าใหม่ทั้งหมด "ใต้" ภาพ preview แล้วรอจนเสร็จครบก่อน (กันความสูงขยับกลางคัน)
+  // วาดหน้าใหม่ทั้งหมด "นอก" DOM ก่อน (staged) แล้วรอจนเสร็จครบ → ไม่มีหน้าไหนโดน transform ซ้ำ
   const jobs = [];
   rendered.forEach(w => {
     w._rendered = false;
     w._origData = null;
-    jobs.push(renderPageInto(parseInt(w.dataset.page), w));
+    w._pendingCanvas = null;
+    jobs.push(renderPageInto(parseInt(w.dataset.page), w, true)); // staged=true
   });
   await Promise.all(jobs);
 
-  // ── ทุกอย่างพร้อมแล้ว → สลับเป็นภาพคม + จัด scroll ในเฟรมเดียว (atomic) ──
+  // ── ทุกอย่างพร้อมแล้ว → สลับ canvas + ถอด transform + จัด scroll ในเฟรมเดียว (atomic) ──
   // 1) อัปเดตความสูงประมาณของหน้าที่ยังไม่ render
   _estPageH = _baseScale > 0 ? Math.round(_basePageH * pdfScale / _baseScale) : Math.round(_estPageH * scaleRatio);
   _pageWrappers.forEach(w => { if (!w._rendered) w.style.minHeight = _estPageH + 'px'; });
   // 2) ปลด freeze ความสูง → หน้าโชว์ขนาดใหม่จริง
   rendered.forEach(w => { w.style.height = ''; });
-  // 3) ถอด preview transform (ตอนนี้ canvas ขนาดใหม่ = ขนาด preview พอดี → ไม่มี snap)
+  // 3) swap canvas ทุกหน้า + ถอด preview transform พร้อมกันในบล็อกเดียว → browser paint ครั้งเดียว ไม่กระพริบ
+  rendered.forEach(w => {
+    const pending = w._pendingCanvas;
+    if (pending) {
+      w.appendChild(pending);
+      while (w.firstChild !== pending) w.removeChild(w.firstChild);
+      w._rendered = true;
+      w._pendingCanvas = null;
+    }
+  });
   if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
+  // อัปเดต background จากหน้า 1
+  const _p1w = _pageWrappers.find(w => parseInt(w.dataset.page) === 1);
+  if (_p1w && _p1w._origData) {
+    const px = _p1w._origData.data;
+    const aEl = document.getElementById('pdf-area');
+    if (aEl) aEl.style.background = `rgb(${px[0]},${px[1]},${px[2]})`;
+  }
   // 4) ยึด scroll ด้วย "หน้าจริง" ที่อยู่ใต้นิ้ว — วัดตำแหน่งจริงหลัง render เสร็จ
   //    (ภูมิคุ้มกันค่าความสูงประมาณของหน้าที่ยังไม่ render → ไม่ขยับ/ไม่เด้ง)
   const aw = _pageWrappers.find(w => parseInt(w.dataset.page) === _pinch.anchorPage);
