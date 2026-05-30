@@ -879,6 +879,7 @@ async function renderAllPages(scrollTo = 1) {
   area.appendChild(content);
 
   pageObserver = new IntersectionObserver(async (entries) => {
+    if (_restoring) return;
     for (const en of entries) {
       if (en.isIntersecting && !en.target._rendered) {
         en.target._rendered = true;
