@@ -1004,6 +1004,7 @@ async function renderPageInto(pageNum, wrapper) {
     // append ก่อน ลบทีหลัง → ไม่มี blank frame ระหว่างสลับ
     wrapper.appendChild(canvas);
     while (wrapper.firstChild !== canvas) wrapper.removeChild(wrapper.firstChild);
+    wrapper._rendered = true; // mark done so IntersectionObserver won't re-trigger
     if (pageNum === 1) {
       const px = wrapper._origData.data;
       document.getElementById('pdf-area').style.background = `rgb(${px[0]},${px[1]},${px[2]})`;
@@ -1311,11 +1312,11 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
   const prevOverflowAnchor = area.style.overflowAnchor;
   area.style.overflowAnchor = 'none';
 
-  // Freeze ความสูงของหน้าที่ render อยู่ (= ขนาดเดิม) ระหว่างวาดใหม่ → layout นิ่ง, preview ไม่กระตุก
+  // Freeze ความสูงของหน้าที่ render อยู่ ระหว่างวาดใหม่ → layout นิ่ง
+  // ไม่ใช้ overflow:hidden เพราะทำให้ canvas หายชั่วคราว → observer คิดว่าหน้าออกจาก viewport → re-trigger วนไม่หยุด
   const rendered = _pageWrappers.filter(w => w._rendered);
   rendered.forEach(w => {
-    w.style.height   = w.offsetHeight + 'px';
-    w.style.overflow = 'hidden';
+    w.style.height = w.offsetHeight + 'px';
   });
 
   // วาดหน้าใหม่ทั้งหมด "ใต้" ภาพ preview แล้วรอจนเสร็จครบก่อน (กันความสูงขยับกลางคัน)
@@ -1332,7 +1333,7 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
   _estPageH = _baseScale > 0 ? Math.round(_basePageH * pdfScale / _baseScale) : Math.round(_estPageH * scaleRatio);
   _pageWrappers.forEach(w => { if (!w._rendered) w.style.minHeight = _estPageH + 'px'; });
   // 2) ปลด freeze ความสูง → หน้าโชว์ขนาดใหม่จริง
-  rendered.forEach(w => { w.style.height = ''; w.style.overflow = ''; });
+  rendered.forEach(w => { w.style.height = ''; });
   // 3) ถอด preview transform (ตอนนี้ canvas ขนาดใหม่ = ขนาด preview พอดี → ไม่มี snap)
   if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
   // 4) ยึด scroll ด้วย "หน้าจริง" ที่อยู่ใต้นิ้ว — วัดตำแหน่งจริงหลัง render เสร็จ
