@@ -1325,6 +1325,10 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
     w.style.height = w.offsetHeight + 'px';
   });
 
+  // บันทึก scrollTop/Left ก่อน await — หลัง await browser อาจเปลี่ยนค่าได้ (iOS inertia)
+  const scrollTopSnapshot  = area.scrollTop;
+  const scrollLeftSnapshot = area.scrollLeft;
+
   // วาดหน้าใหม่ทั้งหมด "นอก" DOM ก่อน (staged) แล้วรอจนเสร็จครบ → ไม่มีหน้าไหนโดน transform ซ้ำ
   const jobs = [];
   rendered.forEach(w => {
@@ -1362,12 +1366,15 @@ async function _rerenderAtNewScale(scaleRatio, focal) {
   // 4) ยึด scroll: คำนวณจากพิกัดคณิตล้วนๆ (ไม่พึ่ง getBoundingClientRect)
   //    originY = viewportY + scrollTop_old → focal point ในย่าน content ใหม่ = originY × ratio
   //    ต้องการให้ focal อยู่ที่ viewportY → newScrollTop = originY × ratio - viewportY
-  //    ตรงกับสิ่งที่ CSS transform preview แสดงพอดี → ไม่มีขยับ
+  //    ใช้ snapshot ก่อน await (ไม่ใช่ค่าปัจจุบันที่อาจถูก iOS inertia เปลี่ยน)
   if (focal) {
+    // recalculate จาก snapshot เพื่อความแม่นยำสูงสุด
+    const snapContentY = (focal.viewY + scrollTopSnapshot)  * scaleRatio;
+    const snapContentX = (focal.viewX + scrollLeftSnapshot) * scaleRatio;
     if (horizMode) {
-      area.scrollLeft = Math.max(0, focal.contentX - focal.viewX);
+      area.scrollLeft = Math.max(0, snapContentX - focal.viewX);
     } else {
-      area.scrollTop  = Math.max(0, focal.contentY - focal.viewY);
+      area.scrollTop  = Math.max(0, snapContentY - focal.viewY);
     }
   }
 
@@ -1507,12 +1514,17 @@ function _onPinchEnd(e) {
 
   if (!pdfDoc) { _clearPinchTransform(content); return; }
 
+  // กัน iOS momentum scroll หลังปล่อยนิ้ว
+  e.preventDefault();
+
   const actualRatio = newScale / _pinch.startScale;
 
-  // focal point ในพิกัด content ใหม่ (= พิกัดเดิม × ratio) — ใช้ยึด scroll หลัง render
+  // focal point: ใช้ scrollTop/Left ณ ตอน pinch END (ไม่ใช่ START) → แม่นยำกว่า
+  const endScrollTop  = area ? area.scrollTop  : 0;
+  const endScrollLeft = area ? area.scrollLeft : 0;
   const focal = {
-    contentX: _pinch.originX * actualRatio,
-    contentY: _pinch.originY * actualRatio,
+    contentX: (_pinch.viewportX + endScrollLeft) * actualRatio,
+    contentY: (_pinch.viewportY + endScrollTop)  * actualRatio,
     viewX:    _pinch.viewportX,
     viewY:    _pinch.viewportY,
   };
